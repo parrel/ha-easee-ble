@@ -9,8 +9,8 @@ REQUIREMENT="$(python3 -c 'import json; print(json.load(open("custom_components/
 python3 -m pip install --upgrade pip
 # pytest-homeassistant-custom-component pins the Home Assistant it was built against.
 pip install -r requirements-test.txt
-# Home Assistant would install this itself on first setup; get it out of the way.
-pip install "$REQUIREMENT"
+# The library plus the Home Assistant integration requirements the tests import.
+scripts/install-deps
 
 # Optional: install a sibling checkout editable so its edits are live here.
 if [ -f /workspaces/easee-ble/pyproject.toml ]; then
