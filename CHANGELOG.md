@@ -2,7 +2,7 @@
 
 Notable changes per release. Versions follow [SemVer](https://semver.org).
 
-## Unreleased
+## 0.1.1 - 2026-09-09
 
 ### Fixed
 
@@ -13,3 +13,9 @@ Notable changes per release. Versions follow [SemVer](https://semver.org).
   that window failed with GATT error 133 after 20 seconds per attempt.
 - A poll that goes unanswered on a link the proxy still reports as up is now
   cut short after 30 seconds instead of running into the 4-minute backstop.
+
+### Changed
+
+- Requires easee-ble 0.1.1. A poll interrupted by a link drop now fails
+  immediately instead of waiting out the reply timeout and blaming the CCCD
+  subscription, which pointed at the wrong cause.
