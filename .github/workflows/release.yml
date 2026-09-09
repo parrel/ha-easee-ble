@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # HACS serves the tag but installs the manifest version; a mismatch ships a broken update.
       - name: Manifest version must match the tag
         run: |
