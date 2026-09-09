@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Start Home Assistant against ./config with this integration linked in.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+mkdir -p config
+
+if [ ! -f config/configuration.yaml ]; then
+    cat > config/configuration.yaml <<'YAML'
+default_config:
+
+logger:
+  default: info
+  logs:
+    custom_components.easee_ble: debug
+    easee_ble: debug
+YAML
+fi
+
+# One symlink for the directory, so new platform files need no further wiring.
+ln -sfn "$PWD/custom_components" config/custom_components
+
+exec hass --config config --debug "$@"

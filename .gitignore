@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.ruff_cache/
+.DS_Store
+*.log
+.env
+
+# Devcontainer Home Assistant config (generated, machine-local)
+/config
+
+# Personal devcontainer variant that mounts a sibling easee-ble checkout
+/.devcontainer/library-dev/

@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # The workflows pin actions and ruff; nothing else would keep them current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+  # requirements-test.txt pins the Home Assistant the tests run against.
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "test"

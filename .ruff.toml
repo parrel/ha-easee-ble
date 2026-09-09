@@ -1,0 +1,20 @@
+# Home Assistant's own conventions, so this repo lints the way core does.
+line-length = 88
+target-version = "py312"
+
+[lint]
+select = ["ASYNC", "B", "D", "E", "F", "I", "PIE", "PT", "RUF", "SIM", "T20", "TID", "UP"]
+ignore = [
+  # Home Assistant entities use bare `_attr_*` class attributes; ClassVar conflicts.
+  "RUF012",
+  # Properties and entity descriptions read better as noun phrases than imperatives.
+  "D401",
+  "D203",
+  "D213",
+]
+
+[lint.pydocstyle]
+convention = "pep257"
+
+[lint.isort]
+known-third-party = ["easee_ble", "homeassistant"]

@@ -1,0 +1,26 @@
+{
+  "entity": {
+    "select": {
+      "phase_mode": { "default": "mdi:sine-wave" },
+      "bt_enable_mode": { "default": "mdi:bluetooth-settings" }
+    },
+    "switch": {
+      "charger_enabled": {
+        "default": "mdi:ev-station",
+        "state": { "off": "mdi:power-plug-off" }
+      },
+      "cable_locked": {
+        "default": "mdi:lock",
+        "state": { "off": "mdi:lock-open-variant" }
+      }
+    },
+    "sensor": {
+      "charger_op_mode": { "default": "mdi:ev-station" },
+      "reason_for_no_current": { "default": "mdi:help-circle-outline" },
+      "charger_firmware": { "default": "mdi:chip" },
+      "wifi_ssid": { "default": "mdi:wifi" },
+      "ip_address": { "default": "mdi:ip-network" },
+      "mac_address": { "default": "mdi:network-outline" }
+    }
+  }
+}

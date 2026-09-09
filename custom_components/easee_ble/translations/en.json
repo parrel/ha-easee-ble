@@ -1,0 +1,232 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Easee charger",
+        "description": "Select the charger to add. It must be advertising (chargers advertise for ~10 minutes after a reboot or a long press of the touch button, unless Bluetooth is kept on).",
+        "data": {
+          "address": "Charger"
+        },
+        "data_description": {
+          "address": "Chargers advertise their serial number as their Bluetooth name."
+        }
+      },
+      "pin": {
+        "title": "Enter the PIN",
+        "description": "Enter the PIN printed on charger {serial}.",
+        "data": {
+          "pin": "PIN"
+        },
+        "data_description": {
+          "pin": "The PIN printed on the label on the underside of the charger."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-enter the PIN",
+        "description": "Charger {serial} rejected the stored PIN. Enter the PIN printed on the charger.",
+        "data": {
+          "pin": "PIN"
+        },
+        "data_description": {
+          "pin": "The PIN printed on the label on the underside of the charger."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This charger is already configured.",
+      "no_devices_found": "No Easee chargers are advertising right now.",
+      "no_serial": "The charger did not advertise its serial number. It will be offered again on its next advertisement.",
+      "not_supported": "This Bluetooth device is not an Easee charger.",
+      "reauth_successful": "The new PIN was accepted."
+    },
+    "error": {
+      "cannot_connect": "Could not reach the charger. It must be advertising and in range of a Bluetooth proxy.",
+      "invalid_auth": "The charger rejected that PIN.",
+      "unknown": "Unexpected error. Check the Home Assistant log."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Easee BLE options",
+        "description": "The charger has a single Bluetooth connection slot, and Home Assistant holds it open continuously - that is what makes polling nearly free, and it means the Easee app cannot connect while this integration is running. Disable the integration when you need the app.",
+        "data": {
+          "scan_interval": "Poll interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to read the charger. The link is already up, so a poll costs about 0.4 seconds - short intervals are cheap here."
+        }
+      }
+    }
+  },
+  "entity": {
+    "light": {
+      "led": {
+        "name": "LED"
+      }
+    },
+    "number": {
+      "max_charger_current": {
+        "name": "Max charger current"
+      },
+      "dynamic_charger_current": {
+        "name": "Dynamic charger current"
+      }
+    },
+    "select": {
+      "phase_mode": {
+        "name": "Phase mode",
+        "state": {
+          "1_phase": "1-phase",
+          "auto": "Automatic",
+          "3_phase": "3-phase"
+        }
+      },
+      "bt_enable_mode": {
+        "name": "Bluetooth mode",
+        "state": {
+          "button_press": "Button press only",
+          "always_on": "Always on"
+        }
+      }
+    },
+    "switch": {
+      "charger_enabled": {
+        "name": "Charger enabled"
+      },
+      "cable_locked": {
+        "name": "Cable locked"
+      }
+    },
+    "sensor": {
+      "circuit_max_current": {
+        "name": "Circuit max current"
+      },
+      "current_l1": {
+        "name": "Current L1"
+      },
+      "current_l2": {
+        "name": "Current L2"
+      },
+      "current_l3": {
+        "name": "Current L3"
+      },
+      "voltage_l1n": {
+        "name": "Voltage L1-N"
+      },
+      "voltage_l2n": {
+        "name": "Voltage L2-N"
+      },
+      "voltage_l3n": {
+        "name": "Voltage L3-N"
+      },
+      "charger_op_mode": {
+        "name": "Status",
+        "state": {
+          "offline": "Offline",
+          "disconnected": "Disconnected",
+          "awaiting_start": "Awaiting start",
+          "charging": "Charging",
+          "completed": "Completed",
+          "error": "Error",
+          "ready_to_charge": "Ready to charge",
+          "awaiting_authorization": "Awaiting authorisation",
+          "de_authorizing": "De-authorising"
+        }
+      },
+      "current_n": {
+        "name": "Current N"
+      },
+      "lifetime_energy": {
+        "name": "Lifetime energy"
+      },
+      "session_energy": {
+        "name": "Session energy"
+      },
+      "local_rssi": {
+        "name": "Bluetooth signal"
+      },
+      "charger_firmware": {
+        "name": "Firmware"
+      },
+      "reason_for_no_current": {
+        "name": "Charging blocked by",
+        "state": {
+          "ok": "Charging, or ready to charge",
+          "max_circuit_limit_too_low": "Max circuit limit too low",
+          "max_dynamic_circuit_limit_too_low": "Max dynamic circuit limit too low",
+          "max_dynamic_offline_limit_too_low": "Max dynamic offline limit too low",
+          "circuit_fuse_too_low": "Circuit fuse too low",
+          "waiting_in_queue": "Waiting in queue",
+          "waiting_in_fully_charged_queue": "Waiting in fully charged queue",
+          "illegal_grid_type": "Illegal grid type",
+          "no_current_request_received": "No current request received",
+          "not_connected_to_master": "Not connected to master",
+          "equalizer_current_too_low": "Equalizer current too low",
+          "phase_not_connected": "Phase not connected",
+          "limited_by_circuit_fuse": "Limited by circuit fuse",
+          "limited_by_circuit_max_limit": "Limited by circuit max limit",
+          "limited_by_circuit_dynamic_limit": "Limited by circuit dynamic limit",
+          "limited_by_equalizer": "Limited by equalizer",
+          "limited_by_load_balancing": "Limited by load balancing",
+          "limited_by_offline_settings": "Limited by offline settings",
+          "secondary_unit_not_requesting_current": "No car connected, or secondary unit not requesting current",
+          "max_charger_limit_too_low": "Max charger limit too low",
+          "max_dynamic_charger_limit_too_low": "Max dynamic charger limit too low",
+          "charger_disabled": "Charger disabled",
+          "waiting_for_schedule_or_authorization": "Waiting for schedule or authorisation",
+          "pending_authorization": "Pending authorisation",
+          "charger_in_error_state": "Charger in error state",
+          "erratic_ev": "Erratic EV",
+          "limited_by_cable_rating": "Limited by cable rating",
+          "limited_by_schedule": "Limited by schedule",
+          "limited_by_charger_max_limit": "Limited by charger max limit",
+          "limited_by_charger_dynamic_limit": "Limited by charger dynamic limit",
+          "ev_not_charging": "EV is not charging",
+          "limited_by_local_adjustment": "Limited by local adjustment",
+          "limited_by_ev": "Limited by EV",
+          "undefined": "Undefined"
+        }
+      },
+      "total_power": {
+        "name": "Power"
+      },
+      "cable_rating": {
+        "name": "Cable rating"
+      },
+      "equalizer_limit_l1": {
+        "name": "Equalizer limit L1"
+      },
+      "equalizer_limit_l2": {
+        "name": "Equalizer limit L2"
+      },
+      "equalizer_limit_l3": {
+        "name": "Equalizer limit L3"
+      },
+      "wifi_ssid": {
+        "name": "WiFi network"
+      },
+      "ip_address": {
+        "name": "IP address"
+      },
+      "mac_address": {
+        "name": "MAC address"
+      }
+    }
+  },
+  "exceptions": {
+    "not_in_range": {
+      "message": "Charger {serial} ({address}) is not in range or not advertising."
+    },
+    "command_refused": {
+      "message": "Charger {serial} refused the command: {error}"
+    },
+    "command_failed": {
+      "message": "The command could not be delivered to charger {serial}: {error}"
+    },
+    "command_timeout": {
+      "message": "Charger {serial} did not respond within {timeout} seconds. The connection was dropped and will be re-established automatically."
+    }
+  }
+}

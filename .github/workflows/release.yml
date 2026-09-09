@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      # HACS serves the tag but installs the manifest version; a mismatch ships a broken update.
+      - name: Manifest version must match the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(python3 -c 'import json; print(json.load(open("custom_components/easee_ble/manifest.json"))["version"])')"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} carries version ${tag}, but the manifest says ${manifest}"
+            exit 1
+          fi
+          echo "tag and manifest agree on ${manifest}"
