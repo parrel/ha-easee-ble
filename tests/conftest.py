@@ -9,6 +9,7 @@ import pytest
 from homeassistant.const import CONF_ADDRESS, CONF_PIN
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.easee_ble import coordinator
 from custom_components.easee_ble.const import CONF_SERIAL, DOMAIN
 
 ADDRESS = "AA:BB:CC:DD:EE:FF"
@@ -33,6 +34,15 @@ POLL_DATA = {
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations: None) -> None:
     """Enable loading custom_components in every test."""
+
+
+@pytest.fixture(autouse=True)
+def no_settle_delay() -> Generator[None]:
+    """Reconnect without the post-teardown pause; the tests time nothing real."""
+    # Kept across reloads in production, so each test has to start from empty.
+    coordinator._TORE_DOWN_AT.clear()
+    with patch("custom_components.easee_ble.coordinator.RECONNECT_SETTLE", 0.0):
+        yield
 
 
 @pytest.fixture

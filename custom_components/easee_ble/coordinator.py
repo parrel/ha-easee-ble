@@ -33,12 +33,18 @@ from .const import (
     CONF_SERIAL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    MAX_LINK_AGE,
+    POLL_TIMEOUT,
+    RECONNECT_SETTLE,
     REFRESH_COOLDOWN,
     UPDATE_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Last teardown per charger. Kept outside the coordinator because Home Assistant
+# reloads the entry on the next advertisement while setup is retrying, and a
+# fresh coordinator must not reconnect straight into that teardown.
+_TORE_DOWN_AT: dict[str, float] = {}
 
 
 class ChargerUnavailable(HomeAssistantError):
@@ -67,7 +73,6 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.serial: str = entry.data[CONF_SERIAL]
         self._pin: str = entry.data[CONF_PIN]
         self._charger: EaseeCharger | None = None
-        self._connected_at: float = 0.0
         # Polls and commands share one link, and only one write may be in flight.
         self._lock = asyncio.Lock()
         super().__init__(
@@ -111,19 +116,13 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise ChargerUnavailable(self.serial, self.address)
         return device
 
-    async def _ready(self, *, retire_stale: bool = False) -> EaseeCharger:
+    async def _ready(self) -> EaseeCharger:
         """The connected charger, reconnecting if the link is gone."""
         charger = self._charger
         if charger is not None and charger.connected:
-            age = self.hass.loop.time() - self._connected_at
-            if not retire_stale or age < MAX_LINK_AGE:
-                return charger
-            _LOGGER.info(
-                "charger %s: retiring the link at %.0fs old and reconnecting",
-                self.serial,
-                age,
-            )
+            return charger
         await self._drop()
+        await self._settle()
         charger = EaseeCharger(
             self._device(), self._pin, self.serial, on_disconnect=self._on_link_lost
         )
@@ -136,11 +135,25 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         _LOGGER.info("charger %s: connected via %s", self.serial, charger.radio)
         self._charger = charger
-        self._connected_at = self.hass.loop.time()
         return charger
+
+    def _stamp_teardown(self) -> None:
+        """Note that this charger's link has just gone away."""
+        _TORE_DOWN_AT[self.address] = self.hass.loop.time()
+
+    async def _settle(self) -> None:
+        """Wait out the tail of a teardown; connecting into one fails, slowly."""
+        tore_down_at = _TORE_DOWN_AT.get(self.address)
+        if tore_down_at is None:
+            return
+        left = RECONNECT_SETTLE - (self.hass.loop.time() - tore_down_at)
+        if left > 0:
+            await asyncio.sleep(left)
 
     def _on_link_lost(self, charger: EaseeCharger) -> None:
         """The backend says the link went; start recovering now, not next cycle."""
+        # Stamped here too: a link lost mid-connect is one _drop never gets to see.
+        self._stamp_teardown()
         if charger is not self._charger:
             return
         _LOGGER.info("charger %s: the link dropped; reconnecting", self.serial)
@@ -156,6 +169,7 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         charger, self._charger = self._charger, None
         if charger is not None:
             await asyncio.shield(charger.disconnect())
+            self._stamp_teardown()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Read the charger, reconnecting first if needed."""
@@ -163,8 +177,16 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             async with asyncio.timeout(UPDATE_TIMEOUT), self._lock:
                 try:
-                    charger = await self._ready(retire_stale=True)
-                    return await charger.poll()
+                    charger = await self._ready()
+                    # Bounded separately from the connect above, which is slower.
+                    try:
+                        async with asyncio.timeout(POLL_TIMEOUT):
+                            return await charger.poll()
+                    except TimeoutError as exc:
+                        raise EaseeConnectionError(
+                            f"charger {self.serial}: the link is up but the poll "
+                            f"went unanswered for {POLL_TIMEOUT:.0f}s"
+                        ) from exc
                 except ChargerUnavailable as exc:
                     # Nothing connected and nothing in range: no link to drop.
                     raise UpdateFailed(str(exc)) from exc

@@ -171,10 +171,11 @@ scripts/develop    # run Home Assistant against ./config with this linked in
 pytest             # run the test suite
 ```
 
-To work on the library at the same time, mount a checkout of it at
-`/workspaces/easee-ble` and `scripts/setup` will install that editable over the
-released copy. Keep its version equal to the manifest pin, or Home Assistant will
-replace it from PyPI on the next start.
+`easee-ble` comes from PyPI at the pin in `manifest.json`, so the devcontainer
+runs what Home Assistant installs. To work on the library at the same time,
+`pip install -e /workspaces/easee-ble[dev]` over it - `scripts/develop` tells
+Home Assistant to leave that package alone, so the checkout survives a restart
+whatever version it calls itself.
 
 ## Licence
 
