@@ -61,6 +61,19 @@
     }
   },
   "entity": {
+    "binary_sensor": {
+      "ocpp_enabled": {
+        "name": "OCPP"
+      }
+    },
+    "button": {
+      "reboot": {
+        "name": "Reboot"
+      },
+      "identify": {
+        "name": "Identify"
+      }
+    },
     "light": {
       "led": {
         "name": "LED"
@@ -72,6 +85,12 @@
       },
       "dynamic_charger_current": {
         "name": "Dynamic charger current"
+      },
+      "dynamic_circuit_current": {
+        "name": "Dynamic circuit current"
+      },
+      "fallback_circuit_current": {
+        "name": "Fallback circuit current"
       }
     },
     "select": {
@@ -97,6 +116,12 @@
       },
       "cable_locked": {
         "name": "Cable locked"
+      },
+      "idle_current": {
+        "name": "Idle current"
+      },
+      "authorization_required": {
+        "name": "Require authorisation"
       }
     },
     "sensor": {
@@ -212,6 +237,74 @@
       },
       "mac_address": {
         "name": "MAC address"
+      },
+      "voltage_l1l2": {
+        "name": "Voltage L1-L2"
+      },
+      "voltage_l1l3": {
+        "name": "Voltage L1-L3"
+      },
+      "voltage_l2l3": {
+        "name": "Voltage L2-L3"
+      },
+      "energy_per_hour": {
+        "name": "Energy last hour"
+      },
+      "lifetime_hours": {
+        "name": "Lifetime hours"
+      },
+      "led_mode": {
+        "name": "LED mode",
+        "state": {
+          "off": "Off",
+          "startup1_application_started": "Startup: application started",
+          "startup2_checking_power_board_firmware": "Startup: checking power board firmware",
+          "startup3_checking_lwn_firmware": "Startup: checking LWN firmware",
+          "startup4_checking_wi_fi_firmware": "Startup: checking WiFi firmware",
+          "startup5_firmware_upgrade_done": "Startup: firmware upgrade done",
+          "startup6": "Startup: step 6",
+          "startup7_setup_half_way_completed": "Startup: setup half completed",
+          "startup8_setup_fully_completed": "Startup: setup completed",
+          "ota1": "Update: step 1",
+          "ota2_upgrading_power_board_firmware": "Update: upgrading power board firmware",
+          "ota3_upgrading_lwn_firmware": "Update: upgrading LWN firmware",
+          "ota4_upgrading_wi_fi_firmware": "Update: upgrading WiFi firmware",
+          "ota5": "Update: step 5",
+          "ota6": "Update: step 6",
+          "ota7": "Update: step 7",
+          "error": "Error",
+          "error_forever": "Error (permanent)",
+          "idle_master": "Idle",
+          "idle_secondary_connected": "Idle, secondary connected",
+          "idle_secondary_searching": "Idle, secondary searching",
+          "smart_mode_not_charging": "Smart mode, not charging",
+          "smart_mode_charging": "Smart mode, charging",
+          "normal_mode_not_charging": "Normal mode, not charging",
+          "normal_mode_charging": "Normal mode, charging",
+          "awaiting_authorization": "Awaiting authorisation",
+          "verify_auth_with_backend": "Verifying authorisation with the backend",
+          "empty_backplate": "Empty backplate",
+          "ok": "OK",
+          "pairing_with_rfid": "Pairing with an RFID tag",
+          "shutdown5": "Shutting down (5)",
+          "shutdown4": "Shutting down (4)",
+          "shutdown3": "Shutting down (3)",
+          "shutdown2": "Shutting down (2)",
+          "shutdown1": "Shutting down (1)",
+          "shutdown0": "Shutting down (0)",
+          "self_test1": "Self test: step 1",
+          "self_test2": "Self test: step 2",
+          "self_test3": "Self test: step 3",
+          "self_test4": "Self test: step 4",
+          "self_test_pending_rfid_and_touch": "Self test: waiting for RFID and touch",
+          "self_test_pending_rfid": "Self test: waiting for RFID",
+          "self_test_pending_touch": "Self test: waiting for touch",
+          "self_test_success": "Self test passed",
+          "self_test_failed": "Self test failed",
+          "jingle_bells": "Jingle bells",
+          "bluetooth_connected": "Bluetooth connected",
+          "invalid_loadbalancing_config": "Invalid load balancing configuration"
+        }
       }
     }
   },
@@ -227,6 +320,56 @@
     },
     "command_timeout": {
       "message": "Charger {serial} did not respond within {timeout} seconds. The connection was dropped and will be re-established automatically."
+    },
+    "not_an_easee_charger": {
+      "message": "Device {device_id} is not an Easee charger from this integration."
+    },
+    "charger_not_loaded": {
+      "message": "That charger's configuration entry is not loaded. Enable it and try again."
+    }
+  },
+  "services": {
+    "list_rfid_keys": {
+      "name": "List RFID keys",
+      "description": "Lists the keys enrolled on the charger itself. These work without a network; tags paired through the Easee app live in the cloud and are not listed here.",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "The charger to act on."
+        }
+      }
+    },
+    "add_rfid_key": {
+      "name": "Add RFID key",
+      "description": "Enrols a key on the charger under a name.",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "The charger to act on."
+        },
+        "name": {
+          "name": "Name",
+          "description": "The name to enrol the key under."
+        },
+        "token": {
+          "name": "Token",
+          "description": "The tag's UID, in hex - the token the key is enrolled under."
+        }
+      }
+    },
+    "remove_rfid_key": {
+      "name": "Remove RFID key",
+      "description": "Removes an enrolled key from the charger.",
+      "fields": {
+        "device_id": {
+          "name": "Charger",
+          "description": "The charger to act on."
+        },
+        "token": {
+          "name": "Token",
+          "description": "The tag's UID, in hex - the token the key is enrolled under."
+        }
+      }
     }
   }
 }

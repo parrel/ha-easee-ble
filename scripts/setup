@@ -3,26 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Read the pin from the manifest so this script cannot drift from it.
-REQUIREMENT="$(python3 -c 'import json; print(json.load(open("custom_components/easee_ble/manifest.json"))["requirements"][0])')"
-
 python3 -m pip install --upgrade pip
 # pytest-homeassistant-custom-component pins the Home Assistant it was built against.
 pip install -r requirements-test.txt
 # The library plus the Home Assistant integration requirements the tests import.
+# easee-ble comes from PyPI at the manifest's pin, exactly as Home Assistant installs it.
+pip uninstall -y easee-ble >/dev/null 2>&1 || true
 scripts/install-deps
-
-# Optional: install a sibling checkout editable so its edits are live here.
-if [ -f /workspaces/easee-ble/pyproject.toml ]; then
-    pip install -e "/workspaces/easee-ble[dev]"
-    checkout="$(python3 -c 'import easee_ble; print(easee_ble.__version__)')"
-    pinned="${REQUIREMENT#easee-ble==}"
-    if [ "$checkout" != "$pinned" ]; then
-        echo >&2
-        echo "warning: /workspaces/easee-ble is $checkout, but the manifest pins" >&2
-        echo "$pinned. Home Assistant will replace the checkout with the published" >&2
-        echo "$pinned on the next start; update the pin to keep working against it." >&2
-    fi
-fi
 
 echo "Setup complete. Run scripts/develop to start Home Assistant, or pytest."
