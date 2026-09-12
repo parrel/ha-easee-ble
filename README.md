@@ -6,15 +6,29 @@ Control an Easee EV charger from Home Assistant over **Bluetooth**. All you need
 [![Validate](https://github.com/parrel/ha-easee-ble/actions/workflows/validate.yml/badge.svg)](https://github.com/parrel/ha-easee-ble/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Unofficial.** Reverse-engineered. Not affiliated with or endorsed by Easee. No warranty, changing charger settings is at your own risk. Barely tested.
+**Unofficial.** Reverse-engineered. Not affiliated with or endorsed by Easee. No warranty, changing charger settings is at your own risk.
 
 ## Supported devices
 
-Easee wall chargers: developed against an Easee Home, and Easee Charge and
-Lite speak the same protocol and are expected to work.
+Easee wall chargers: developed against an Easee Charge Max, others speak the same protocol and are expected to work.
 
-The Easee **Equalizer** is not supported - it is a separate device with its own
-protocol. The limits it applies show up here as sensors on the charger it feeds.
+## Compared to the alternatives
+| | This integration | [Easee](https://github.com/nordicopen/easee_hass) (pyeasee) | [OCPP](https://github.com/lbbrhzn/ocpp)¹ |
+|---|:-:|:-:|:-:|
+| Local control | ✅ | ❌ | ✅ |
+| Start and stop charging | ✅ | ✅ | ✅ |
+| Current limits | ✅ | ✅ | ✅ |
+| Phase switching | ✅ | ✅ | ❌ |
+| Power and energy | ✅ | ⚠️² | ✅ |
+| Update rate | >5s | Live push | >30 s |
+| RFID key enrollment | ✅ | ❌ | ❌ |
+| Charge schedules | ❌ | ✅ | ❌ |
+
+¹ Easee's native OCPP, firmware 344 and later. It is switched on through
+Easee's cloud API.
+
+² The cloud updates lifetime energy at irregular times, not on the hour, so
+the Energy dashboard books part of it in the wrong hour.
 
 ## Before you start
 
@@ -25,7 +39,7 @@ usual choice.
 Two things are worth checking now, because they are the cause of nearly every
 failed setup:
 
-- **A Bluetooth adapter plugged into the Home Assistant machine will not work.**
+- **A Bluetooth adapter plugged into the Home Assistant machine will most likely not work.**
   The charger doesn't expose the descriptors Linux's Bluetooth stack needs to
   subscribe to notifications, so replies never arrive. Use a proxy.
 - **The proxy must not be scanning 100% of the time.** ESPHome's defaults
