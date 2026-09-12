@@ -19,6 +19,7 @@ from easee_ble import (
     PhaseMode,
     Request,
     Session,
+    command_payload,
 )
 from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
@@ -212,13 +213,19 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 f"charger {self.serial}: update stalled past {UPDATE_TIMEOUT:.0f}s"
             ) from exc
 
-    async def _apply(self, make_request: Callable[[Session], Request]) -> None:
+    async def _apply(
+        self,
+        make_request: Callable[[Session], Request],
+        *,
+        refresh: bool = True,
+    ) -> Any:
         """Send one command over the held connection, then refresh."""
+        reply: Any = None
         try:
             async with asyncio.timeout(COMMAND_TIMEOUT), self._lock:
                 try:
                     charger = await self._ready()
-                    await charger.perform(make_request)
+                    reply = await charger.perform(make_request)
                 except EaseeCommandRefused as exc:
                     # The charger replied and said no, so the link is fine.
                     raise HomeAssistantError(
@@ -250,7 +257,9 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             ) from exc
         # Outside the lock: refreshing takes it again.
-        await self.async_request_refresh()
+        if refresh:
+            await self.async_request_refresh()
+        return reply
 
     async def async_apply_options(self) -> None:
         """Re-read the entry's options; cheaper than the reload HA would do."""
@@ -288,3 +297,47 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_set_bt_enable_mode(self, mode: BtEnableMode) -> None:
         """Set how the charger's Bluetooth radio behaves."""
         await self._apply(lambda s: s.set_bt_enable_mode(mode))
+
+    async def async_set_dynamic_circuit_current(self, amperes: int) -> None:
+        """Set the circuit's dynamic limit on every phase."""
+        await self._apply(
+            lambda s: s.set_dynamic_circuit_current(amperes, amperes, amperes)
+        )
+
+    async def async_set_fallback_circuit_current(self, amperes: int) -> None:
+        """Set the circuit limit the charger falls back to without a network."""
+        await self._apply(
+            lambda s: s.set_fallback_circuit_current(amperes, amperes, amperes)
+        )
+
+    async def async_set_idle_current(self, enabled: bool) -> None:
+        """Keep a trickle of current flowing to a parked car."""
+        await self._apply(lambda s: s.set_idle_current(enabled))
+
+    async def async_set_local_authorization(self, required: bool) -> None:
+        """Require a key before charging starts - the app's private access."""
+        await self._apply(lambda s: s.set_local_authorization(required))
+
+    async def async_play_lights(self) -> None:
+        """Run the LED animation, to tell one charger from another."""
+        await self._apply(lambda s: s.play_lights())
+
+    async def async_list_rfid_keys(self) -> list[str]:
+        """The names of the keys enrolled on the charger itself."""
+        reply = await self._apply(lambda s: s.list_local_rfids(), refresh=False)
+        names = (command_payload(reply) or {}).get("utns")
+        return [str(name) for name in names] if isinstance(names, list) else []
+
+    async def async_add_rfid_key(self, name: str, token: str) -> None:
+        """Enrol a key on the charger under a name."""
+        await self._apply(lambda s: s.add_local_rfid(name, token), refresh=False)
+
+    async def async_remove_rfid_key(self, token: str) -> None:
+        """Remove the enrolled key with this token."""
+        await self._apply(lambda s: s.remove_local_rfid(token), refresh=False)
+
+    async def async_reboot(self) -> None:
+        """Reboot the charger; it acknowledges, then the link goes away."""
+        await self._apply(lambda s: s.reboot(), refresh=False)
+        async with self._lock:
+            await self._drop()

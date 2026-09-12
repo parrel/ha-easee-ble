@@ -81,9 +81,13 @@ done.
 | **Max charger current** | The charger's own current limit, in amps |
 | **Dynamic charger current** | A temporary limit on top of it - the one to automate |
 | **Phase mode** | 1-phase, automatic, or 3-phase |
+| **Dynamic circuit current** | The same, one level up: the circuit shared by several chargers |
 | **Cable locked** | Lock the cable permanently into the socket |
+| **Idle current** | Keep a trickle flowing to a parked car |
+| **Require authorisation** | No charging until a key is presented - the app's private access |
 | **LED** | The status LED strip, dimmable; 0% is off |
 | **Bluetooth mode** | Button press only, or always on |
+| **Reboot**, **Identify** | Restart the charger; play the LED animation to find it |
 
 ### Sensors
 
@@ -96,9 +100,10 @@ done.
 | **Current L1/L2/L3** | Per-phase current |
 | **Circuit max current**, **Cable rating** | The installer's limit and the cable's rating |
 
-Voltages, current N, equalizer limits, Bluetooth signal, firmware, WiFi network,
-IP and MAC address are also created, but disabled by default. Enable any of them
-from the device page.
+Also created but **disabled by default**: line-to-line and line-to-neutral
+voltages, current N, equalizer limits, energy last hour, lifetime hours, LED
+mode, OCPP, fallback circuit current, Bluetooth signal, firmware, WiFi network,
+IP and MAC address. Enable any of them from the device page.
 
 ### Reading Status and "Charging blocked by" together
 
@@ -110,6 +115,26 @@ to *Charger disabled*.
 Together they tell apart the situations that all look like "awaiting start":
 switched off, waiting for authorisation, queued behind load balancing, or capped
 by the circuit.
+
+## Actions
+
+The charger keeps its own list of RFID keys, the ones that work with no network
+at all. Nothing reports that list as a state, so it is reached through actions:
+`easee_ble.list_rfid_keys`, `easee_ble.add_rfid_key` and
+`easee_ble.remove_rfid_key`. Each takes the charger as its target.
+
+```yaml
+action: easee_ble.list_rfid_keys
+data:
+  device_id: "{{ device_id('sensor.eh123456_status') }}"
+response_variable: enrolled       # {"keys": ["Alice", "Bob"]}
+```
+
+Adding takes a name and the tag's UID in hex; removing takes the UID alone.
+A tag paired through the Easee app is enrolled against your **account in the
+cloud**, not against the charger, and will not appear here.
+
+Turn **Require authorisation** on to make the charger actually ask for a key.
 
 ## Options
 

@@ -28,6 +28,15 @@ POLL_DATA = {
     "reasonForNoCurrent": 0,
     "lifetimeEnergy": 1234.5,
     "totalPower": 7.4,
+    "enableIdleCurrent": 0,
+    "authorizationRequired": 0,
+    "ocppEnabled": 0,
+    "ledMode": 18,
+    "energyPerHour": 2.5,
+    "lifetimeHours": 8760,
+    "dynamicCircuitCurrentP1": 20,
+    "fallbackCircuitCurrentP1": 10,
+    "circuitMaxCurrentP1": 25,
 }
 
 

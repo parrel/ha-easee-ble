@@ -2,6 +2,25 @@
 
 Notable changes per release. Versions follow [SemVer](https://semver.org).
 
+## 0.2.0 - 2026-09-12
+
+Requires easee-ble 0.2.0.
+
+### Added
+
+- **Dynamic circuit current**, **Idle current**, **Require authorisation** and **Fallback circuit current** controls.
+- **Reboot** and **Identify** buttons.
+- Actions to list, add and remove the charger's offline RFID keys.
+- Line-to-line voltage, last-hour energy, lifetime hours, LED mode and OCPP readings, disabled by default.
+
+### Fixed
+
+- **Circuit max current** now shows the circuit limit instead of the offline fallback current.
+
+### Removed
+
+- The `confirmed` attribute on **Charging blocked by**.
+
 ## 0.1.1 - 2026-09-09
 
 ### Fixed
