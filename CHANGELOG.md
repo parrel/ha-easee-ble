@@ -2,7 +2,9 @@
 
 Notable changes per release. Versions follow [SemVer](https://semver.org).
 
-## Unreleased
+## 1.0.0 - 2026-09-12
+
+Requires easee-ble 1.0.0.
 
 ### Added
 

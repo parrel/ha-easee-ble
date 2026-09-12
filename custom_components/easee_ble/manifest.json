@@ -26,7 +26,7 @@
     "easee_ble"
   ],
   "requirements": [
-    "easee-ble==0.2.0"
+    "easee-ble==1.0.0"
   ],
   "version": "0.2.0"
 }
