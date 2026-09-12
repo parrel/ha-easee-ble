@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from easee_ble import (
-    CONFIRMED_REASON_CODES,
     REASON_FOR_NO_CURRENT,
     REASON_FOR_NO_CURRENT_SLUGS,
     ChargerOpMode,
+    LedMode,
     reason_for_no_current,
     reason_for_no_current_slug,
 )
@@ -26,6 +26,7 @@ from homeassistant.const import (
     UnitOfElectricPotential,
     UnitOfEnergy,
     UnitOfPower,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
@@ -183,10 +184,34 @@ SENSORS: tuple[EaseeSensorEntityDescription, ...] = (
     _voltage("voltageL1N", "voltage_l1n"),
     _voltage("voltageL2N", "voltage_l2n"),
     _voltage("voltageL3N", "voltage_l3n"),
+    _voltage("voltageL1L2", "voltage_l1l2"),
+    _voltage("voltageL1L3", "voltage_l1l3"),
+    _voltage("voltageL2L3", "voltage_l2l3"),
+    EaseeSensorEntityDescription(
+        key="energy_per_hour",
+        field="energyPerHour",
+        translation_key="energy_per_hour",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        entity_registry_enabled_default=False,
+    ),
+    EaseeSensorEntityDescription(
+        key="lifetime_hours",
+        field="lifetimeHours",
+        translation_key="lifetime_hours",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+    ),
 )
 
 _OP_MODE_OPTIONS = [mode.name.lower() for mode in ChargerOpMode]
 _OP_MODE_BY_VALUE = {mode.value: mode.name.lower() for mode in ChargerOpMode}
+
+_LED_MODE_OPTIONS = [mode.name.lower() for mode in LedMode]
+_LED_MODE_BY_VALUE = {mode.value: mode.name.lower() for mode in LedMode}
 
 # Ordered by code rather than alphabetically, the way Easee grouped them.
 _REASON_OPTIONS = [
@@ -204,6 +229,7 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [EaseeReading(coordinator, desc) for desc in SENSORS]
     entities.append(EaseeStatus(coordinator))
     entities.append(EaseeReasonForNoCurrent(coordinator))
+    entities.append(EaseeLedMode(coordinator))
     async_add_entities(entities)
 
 
@@ -281,6 +307,27 @@ class EaseeReasonForNoCurrent(EaseeBleReadingEntity, SensorEntity):
         return {
             "code": code,
             "known": code in REASON_FOR_NO_CURRENT,
-            "confirmed": code in CONFIRMED_REASON_CODES,
             "description": reason_for_no_current(code),
         }
+
+
+class EaseeLedMode(EaseeBleReadingEntity, SensorEntity):
+    """What the LED strip is showing: idle, self test, RFID pairing, an error."""
+
+    _attr_translation_key = "led_mode"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = _LED_MODE_OPTIONS
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+
+    def __init__(self, coordinator: EaseeBleCoordinator) -> None:
+        """Initialise the sensor."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{coordinator.address}_led_mode"
+
+    @property
+    def native_value(self) -> str | None:
+        """The LED mode as a lowercase option string."""
+        value = (self.coordinator.data or {}).get("ledMode")
+        # An enum sensor may not report a state outside its own options list.
+        return None if value is None else _LED_MODE_BY_VALUE.get(int(value))

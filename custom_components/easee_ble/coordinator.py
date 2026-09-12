@@ -19,6 +19,7 @@ from easee_ble import (
     PhaseMode,
     Request,
     Session,
+    command_payload,
 )
 from homeassistant.components import bluetooth
 from homeassistant.config_entries import ConfigEntry
@@ -33,12 +34,18 @@ from .const import (
     CONF_SERIAL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
-    MAX_LINK_AGE,
+    POLL_TIMEOUT,
+    RECONNECT_SETTLE,
     REFRESH_COOLDOWN,
     UPDATE_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# Last teardown per charger. Kept outside the coordinator because Home Assistant
+# reloads the entry on the next advertisement while setup is retrying, and a
+# fresh coordinator must not reconnect straight into that teardown.
+_TORE_DOWN_AT: dict[str, float] = {}
 
 
 class ChargerUnavailable(HomeAssistantError):
@@ -67,7 +74,6 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.serial: str = entry.data[CONF_SERIAL]
         self._pin: str = entry.data[CONF_PIN]
         self._charger: EaseeCharger | None = None
-        self._connected_at: float = 0.0
         # Polls and commands share one link, and only one write may be in flight.
         self._lock = asyncio.Lock()
         super().__init__(
@@ -111,19 +117,13 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise ChargerUnavailable(self.serial, self.address)
         return device
 
-    async def _ready(self, *, retire_stale: bool = False) -> EaseeCharger:
+    async def _ready(self) -> EaseeCharger:
         """The connected charger, reconnecting if the link is gone."""
         charger = self._charger
         if charger is not None and charger.connected:
-            age = self.hass.loop.time() - self._connected_at
-            if not retire_stale or age < MAX_LINK_AGE:
-                return charger
-            _LOGGER.info(
-                "charger %s: retiring the link at %.0fs old and reconnecting",
-                self.serial,
-                age,
-            )
+            return charger
         await self._drop()
+        await self._settle()
         charger = EaseeCharger(
             self._device(), self._pin, self.serial, on_disconnect=self._on_link_lost
         )
@@ -136,11 +136,25 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             )
         _LOGGER.info("charger %s: connected via %s", self.serial, charger.radio)
         self._charger = charger
-        self._connected_at = self.hass.loop.time()
         return charger
+
+    def _stamp_teardown(self) -> None:
+        """Note that this charger's link has just gone away."""
+        _TORE_DOWN_AT[self.address] = self.hass.loop.time()
+
+    async def _settle(self) -> None:
+        """Wait out the tail of a teardown; connecting into one fails, slowly."""
+        tore_down_at = _TORE_DOWN_AT.get(self.address)
+        if tore_down_at is None:
+            return
+        left = RECONNECT_SETTLE - (self.hass.loop.time() - tore_down_at)
+        if left > 0:
+            await asyncio.sleep(left)
 
     def _on_link_lost(self, charger: EaseeCharger) -> None:
         """The backend says the link went; start recovering now, not next cycle."""
+        # Stamped here too: a link lost mid-connect is one _drop never gets to see.
+        self._stamp_teardown()
         if charger is not self._charger:
             return
         _LOGGER.info("charger %s: the link dropped; reconnecting", self.serial)
@@ -156,6 +170,7 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         charger, self._charger = self._charger, None
         if charger is not None:
             await asyncio.shield(charger.disconnect())
+            self._stamp_teardown()
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Read the charger, reconnecting first if needed."""
@@ -163,8 +178,16 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         try:
             async with asyncio.timeout(UPDATE_TIMEOUT), self._lock:
                 try:
-                    charger = await self._ready(retire_stale=True)
-                    return await charger.poll()
+                    charger = await self._ready()
+                    # Bounded separately from the connect above, which is slower.
+                    try:
+                        async with asyncio.timeout(POLL_TIMEOUT):
+                            return await charger.poll()
+                    except TimeoutError as exc:
+                        raise EaseeConnectionError(
+                            f"charger {self.serial}: the link is up but the poll "
+                            f"went unanswered for {POLL_TIMEOUT:.0f}s"
+                        ) from exc
                 except ChargerUnavailable as exc:
                     # Nothing connected and nothing in range: no link to drop.
                     raise UpdateFailed(str(exc)) from exc
@@ -190,13 +213,19 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 f"charger {self.serial}: update stalled past {UPDATE_TIMEOUT:.0f}s"
             ) from exc
 
-    async def _apply(self, make_request: Callable[[Session], Request]) -> None:
+    async def _apply(
+        self,
+        make_request: Callable[[Session], Request],
+        *,
+        refresh: bool = True,
+    ) -> Any:
         """Send one command over the held connection, then refresh."""
+        reply: Any = None
         try:
             async with asyncio.timeout(COMMAND_TIMEOUT), self._lock:
                 try:
                     charger = await self._ready()
-                    await charger.perform(make_request)
+                    reply = await charger.perform(make_request)
                 except EaseeCommandRefused as exc:
                     # The charger replied and said no, so the link is fine.
                     raise HomeAssistantError(
@@ -228,7 +257,9 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 },
             ) from exc
         # Outside the lock: refreshing takes it again.
-        await self.async_request_refresh()
+        if refresh:
+            await self.async_request_refresh()
+        return reply
 
     async def async_apply_options(self) -> None:
         """Re-read the entry's options; cheaper than the reload HA would do."""
@@ -266,3 +297,47 @@ class EaseeBleCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     async def async_set_bt_enable_mode(self, mode: BtEnableMode) -> None:
         """Set how the charger's Bluetooth radio behaves."""
         await self._apply(lambda s: s.set_bt_enable_mode(mode))
+
+    async def async_set_dynamic_circuit_current(self, amperes: int) -> None:
+        """Set the circuit's dynamic limit on every phase."""
+        await self._apply(
+            lambda s: s.set_dynamic_circuit_current(amperes, amperes, amperes)
+        )
+
+    async def async_set_fallback_circuit_current(self, amperes: int) -> None:
+        """Set the circuit limit the charger falls back to without a network."""
+        await self._apply(
+            lambda s: s.set_fallback_circuit_current(amperes, amperes, amperes)
+        )
+
+    async def async_set_idle_current(self, enabled: bool) -> None:
+        """Keep a trickle of current flowing to a parked car."""
+        await self._apply(lambda s: s.set_idle_current(enabled))
+
+    async def async_set_local_authorization(self, required: bool) -> None:
+        """Require a key before charging starts - the app's private access."""
+        await self._apply(lambda s: s.set_local_authorization(required))
+
+    async def async_play_lights(self) -> None:
+        """Run the LED animation, to tell one charger from another."""
+        await self._apply(lambda s: s.play_lights())
+
+    async def async_list_rfid_keys(self) -> list[str]:
+        """The names of the keys enrolled on the charger itself."""
+        reply = await self._apply(lambda s: s.list_local_rfids(), refresh=False)
+        names = (command_payload(reply) or {}).get("utns")
+        return [str(name) for name in names] if isinstance(names, list) else []
+
+    async def async_add_rfid_key(self, name: str, token: str) -> None:
+        """Enrol a key on the charger under a name."""
+        await self._apply(lambda s: s.add_local_rfid(name, token), refresh=False)
+
+    async def async_remove_rfid_key(self, token: str) -> None:
+        """Remove the enrolled key with this token."""
+        await self._apply(lambda s: s.remove_local_rfid(token), refresh=False)
+
+    async def async_reboot(self) -> None:
+        """Reboot the charger; it acknowledges, then the link goes away."""
+        await self._apply(lambda s: s.reboot(), refresh=False)
+        async with self._lock:
+            await self._drop()

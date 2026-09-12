@@ -1,26 +1,80 @@
 {
   "entity": {
+    "binary_sensor": {
+      "ocpp_enabled": {
+        "default": "mdi:server-network",
+        "state": {
+          "off": "mdi:server-network-off"
+        }
+      }
+    },
     "select": {
-      "phase_mode": { "default": "mdi:sine-wave" },
-      "bt_enable_mode": { "default": "mdi:bluetooth-settings" }
+      "phase_mode": {
+        "default": "mdi:sine-wave"
+      },
+      "bt_enable_mode": {
+        "default": "mdi:bluetooth-settings"
+      }
     },
     "switch": {
       "charger_enabled": {
         "default": "mdi:ev-station",
-        "state": { "off": "mdi:power-plug-off" }
+        "state": {
+          "off": "mdi:power-plug-off"
+        }
       },
       "cable_locked": {
         "default": "mdi:lock",
-        "state": { "off": "mdi:lock-open-variant" }
+        "state": {
+          "off": "mdi:lock-open-variant"
+        }
+      },
+      "idle_current": {
+        "default": "mdi:car-electric",
+        "state": {
+          "off": "mdi:car-electric-outline"
+        }
+      },
+      "authorization_required": {
+        "default": "mdi:shield-key",
+        "state": {
+          "off": "mdi:shield-key-outline"
+        }
       }
     },
     "sensor": {
-      "charger_op_mode": { "default": "mdi:ev-station" },
-      "reason_for_no_current": { "default": "mdi:help-circle-outline" },
-      "charger_firmware": { "default": "mdi:chip" },
-      "wifi_ssid": { "default": "mdi:wifi" },
-      "ip_address": { "default": "mdi:ip-network" },
-      "mac_address": { "default": "mdi:network-outline" }
+      "charger_op_mode": {
+        "default": "mdi:ev-station"
+      },
+      "reason_for_no_current": {
+        "default": "mdi:help-circle-outline"
+      },
+      "charger_firmware": {
+        "default": "mdi:chip"
+      },
+      "wifi_ssid": {
+        "default": "mdi:wifi"
+      },
+      "ip_address": {
+        "default": "mdi:ip-network"
+      },
+      "mac_address": {
+        "default": "mdi:network-outline"
+      },
+      "led_mode": {
+        "default": "mdi:led-on"
+      },
+      "lifetime_hours": {
+        "default": "mdi:timer-outline"
+      },
+      "energy_per_hour": {
+        "default": "mdi:lightning-bolt"
+      }
     }
+  },
+  "services": {
+    "list_rfid_keys": "mdi:format-list-bulleted",
+    "add_rfid_key": "mdi:card-plus",
+    "remove_rfid_key": "mdi:card-remove"
   }
 }

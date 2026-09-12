@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 from homeassistant.components.light import ATTR_BRIGHTNESS
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.icon import async_get_icons
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components import easee_ble
 from custom_components.easee_ble.const import DOMAIN
 
 from .conftest import POLL_DATA
@@ -168,3 +172,126 @@ async def test_icons_are_registered(
         entity_icons["switch"]["cable_locked"]["state"]["off"]
         == "mdi:lock-open-variant"
     )
+
+
+async def test_new_settings_write_and_read_back(
+    hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
+) -> None:
+    """The switches added in 0.2.0 send their own command and follow the poll."""
+    assert hass.states.get("switch.eh123456_idle_current").state == "off"
+
+    await hass.services.async_call(
+        "switch",
+        "turn_on",
+        {ATTR_ENTITY_ID: "switch.eh123456_idle_current"},
+        blocking=True,
+    )
+    session = MagicMock()
+    mock_charger.perform.await_args.args[0](session)
+    session.set_idle_current.assert_called_once_with(True)
+
+    await _set_reading(hass, loaded, mock_charger, enableIdleCurrent=1)
+    assert hass.states.get("switch.eh123456_idle_current").state == "on"
+
+
+async def test_authorization_required_uses_local_authorization(
+    hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
+) -> None:
+    """Private access is written with set_local_authorization, not set_enabled."""
+    await hass.services.async_call(
+        "switch",
+        "turn_on",
+        {ATTR_ENTITY_ID: "switch.eh123456_require_authorisation"},
+        blocking=True,
+    )
+    session = MagicMock()
+    mock_charger.perform.await_args.args[0](session)
+    session.set_local_authorization.assert_called_once_with(True)
+
+
+async def test_dynamic_circuit_current_writes_all_phases(
+    hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
+) -> None:
+    """Every phase is named: one argument would set phase 1 and leave L2/L3 open."""
+    assert hass.states.get("number.eh123456_dynamic_circuit_current").state == "20.0"
+
+    await hass.services.async_call(
+        "number",
+        "set_value",
+        {ATTR_ENTITY_ID: "number.eh123456_dynamic_circuit_current", "value": 12},
+        blocking=True,
+    )
+    session = MagicMock()
+    mock_charger.perform.await_args.args[0](session)
+    session.set_dynamic_circuit_current.assert_called_once_with(12, 12, 12)
+
+
+async def test_led_mode_reports_the_app_s_own_enum(
+    hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
+) -> None:
+    """LED mode is a disabled diagnostic, so it has to be enabled to be read."""
+    registry = er.async_get(hass)
+    entry = registry.async_get("sensor.eh123456_led_mode")
+    assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
+
+    registry.async_update_entity(entry.entity_id, disabled_by=None)
+    await hass.config_entries.async_reload(loaded.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get("sensor.eh123456_led_mode").state == "idle_master"
+
+
+async def test_identify_plays_the_lights(
+    hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
+) -> None:
+    """The identify button runs the animation the app plays on connecting."""
+    await hass.services.async_call(
+        "button", "press", {ATTR_ENTITY_ID: "button.eh123456_identify"}, blocking=True
+    )
+    session = MagicMock()
+    mock_charger.perform.await_args.args[0](session)
+    session.play_lights.assert_called_once_with()
+
+
+async def test_reboot_releases_the_connection_slot(
+    hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
+) -> None:
+    """A rebooting charger is on its way down: hold nothing, and do not poll it."""
+    mock_charger.poll.reset_mock()
+
+    await hass.services.async_call(
+        "button", "press", {ATTR_ENTITY_ID: "button.eh123456_reboot"}, blocking=True
+    )
+    await hass.async_block_till_done()
+
+    session = MagicMock()
+    mock_charger.perform.await_args.args[0](session)
+    session.reboot.assert_called_once_with()
+    mock_charger.disconnect.assert_awaited()
+    assert not mock_charger.poll.await_count
+
+
+async def test_every_entity_has_a_translated_name(
+    hass: HomeAssistant, loaded: MockConfigEntry
+) -> None:
+    """Each entity's translation key resolves, and strings.json has no orphans."""
+    strings = json.loads(
+        (Path(easee_ble.__file__).parent / "strings.json").read_text()
+    )["entity"]
+
+    used: dict[str, set[str]] = {}
+    for entry in er.async_get(hass).entities.values():
+        platform = entry.entity_id.split(".")[0]
+        assert entry.translation_key, f"{entry.entity_id} has no translation key"
+        assert entry.translation_key in strings.get(platform, {}), (
+            f"{entry.entity_id}: no strings.json entry for "
+            f"entity.{platform}.{entry.translation_key}"
+        )
+        used.setdefault(platform, set()).add(entry.translation_key)
+
+    orphans = {
+        f"{platform}.{key}"
+        for platform, keys in strings.items()
+        for key in keys
+        if key not in used.get(platform, set())
+    }
+    assert not orphans, f"strings.json describes entities that do not exist: {orphans}"

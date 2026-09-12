@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Install the requirements of the Home Assistant integrations this one builds on.
+# Home Assistant installs them on first setup; the tests import them at collection.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# Read the pins out of the installed manifests, so they follow the pinned core.
+python3 - <<'PY' | xargs -r python3 -m pip install
+import json
+from pathlib import Path
+
+import homeassistant.components
+
+components = Path(homeassistant.components.__file__).parent
+manifest = json.loads(Path("custom_components/easee_ble/manifest.json").read_text())
+requirements = set(manifest["requirements"])
+
+# Only dependencies: after_dependencies are optional and never imported.
+queue, seen = list(manifest["dependencies"]), set()
+while queue:
+    domain = queue.pop()
+    if domain in seen:
+        continue
+    seen.add(domain)
+    dependency = json.loads((components / domain / "manifest.json").read_text())
+    requirements.update(dependency.get("requirements", []))
+    queue += dependency.get("dependencies", [])
+
+print("\n".join(sorted(requirements)))
+PY

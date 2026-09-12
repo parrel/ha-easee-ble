@@ -1,0 +1,38 @@
+list_rfid_keys:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: easee_ble
+
+add_rfid_key:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: easee_ble
+    name:
+      required: true
+      example: Alice
+      selector:
+        text:
+    token:
+      required: true
+      example: 04a1b2c3d4e5f6
+      selector:
+        text:
+
+remove_rfid_key:
+  fields:
+    device_id:
+      required: true
+      selector:
+        device:
+          integration: easee_ble
+    token:
+      required: true
+      example: 04a1b2c3d4e5f6
+      selector:
+        text:
