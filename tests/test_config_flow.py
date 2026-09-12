@@ -265,6 +265,12 @@ async def test_reauth(
     assert result["reason"] == "reauth_successful"
     assert mock_entry.data[CONF_PIN] == "4321"
 
+    # The reauth success reloads the entry in the background; let that finish,
+    # then unload so the coordinator's refresh timer doesn't linger past the test.
+    await hass.async_block_till_done()
+    assert await hass.config_entries.async_unload(mock_entry.entry_id)
+    await hass.async_block_till_done()
+
 
 async def test_options_flow(
     hass: HomeAssistant,

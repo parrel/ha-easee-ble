@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 from easee_ble import EaseeConnectionError, JPakeError
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.easee_ble.const import DOMAIN
@@ -27,11 +28,8 @@ async def test_setup_and_unload(
     assert hass.states.get("sensor.eh123456_status") is not None
     assert hass.states.get("switch.eh123456_charger_enabled").state == "on"
 
-    device = next(
-        d
-        for d in hass.data["device_registry"].devices.values()
-        if (DOMAIN, mock_entry.unique_id) in d.identifiers
-    )
+    device_registry = dr.async_get(hass)
+    (device,) = dr.async_entries_for_config_entry(device_registry, mock_entry.entry_id)
     assert device.manufacturer == "Easee"
 
     assert await hass.config_entries.async_unload(mock_entry.entry_id)

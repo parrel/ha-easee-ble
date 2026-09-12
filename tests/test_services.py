@@ -27,7 +27,9 @@ async def charger_device(
     mock_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_entry.entry_id)
     await hass.async_block_till_done()
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, ADDRESS)})
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, ADDRESS), mock_entry.entry_id
+    )
     return device.id
 
 
