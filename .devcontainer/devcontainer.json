@@ -1,6 +1,6 @@
 {
   "name": "ha-easee-ble",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.13-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/python:3-3.14-bookworm",
   "workspaceFolder": "/workspaces/ha-easee-ble",
   "postCreateCommand": "scripts/setup",
   "forwardPorts": [8123],
