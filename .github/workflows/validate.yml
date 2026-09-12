@@ -21,8 +21,6 @@ jobs:
 
   hacs:
     runs-on: ubuntu-latest
-    # Manual-only until the repo has topics, a description, and brands assets.
-    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
     steps:
@@ -54,7 +52,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
       - name: Install dependencies
         run: |
           pip install -r requirements-test.txt

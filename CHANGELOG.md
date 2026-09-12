@@ -2,6 +2,12 @@
 
 Notable changes per release. Versions follow [SemVer](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- Brand icon and logo
+
 ## 0.2.0 - 2026-09-12
 
 Requires easee-ble 0.2.0.
