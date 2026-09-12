@@ -21,6 +21,8 @@ jobs:
 
   hacs:
     runs-on: ubuntu-latest
+    # Manual-only until the repo has topics, a description, and brands assets.
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
     steps:
@@ -56,6 +58,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements-test.txt
-          pip install "$(python -c 'import json; print(json.load(open("custom_components/easee_ble/manifest.json"))["requirements"][0])')"
+          scripts/install-deps
       - name: Run tests
         run: pytest --cov=custom_components.easee_ble --cov-report=term-missing

@@ -1,4 +1,4 @@
-"""Writable numeric settings: the two current limits."""
+"""Writable numeric settings: the charger and circuit current limits."""
 
 from __future__ import annotations
 
@@ -56,6 +56,33 @@ NUMBERS: tuple[EaseeNumberEntityDescription, ...] = (
         mode=NumberMode.SLIDER,
         entity_category=EntityCategory.CONFIG,
         setter=lambda c, v: c.async_set_dynamic_charger_current(v),
+    ),
+    EaseeNumberEntityDescription(
+        key="dynamic_circuit_current",
+        field="dynamicCircuitCurrentP1",
+        translation_key="dynamic_circuit_current",
+        device_class=NumberDeviceClass.CURRENT,
+        native_min_value=0,
+        native_max_value=40,
+        native_step=1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        mode=NumberMode.SLIDER,
+        entity_category=EntityCategory.CONFIG,
+        setter=lambda c, v: c.async_set_dynamic_circuit_current(v),
+    ),
+    EaseeNumberEntityDescription(
+        key="fallback_circuit_current",
+        field="fallbackCircuitCurrentP1",
+        translation_key="fallback_circuit_current",
+        device_class=NumberDeviceClass.CURRENT,
+        native_min_value=0,
+        native_max_value=40,
+        native_step=1,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        mode=NumberMode.SLIDER,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        setter=lambda c, v: c.async_set_fallback_circuit_current(v),
     ),
 )
 

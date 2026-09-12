@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.easee_ble.const import MAX_LINK_AGE
+import custom_components.easee_ble.coordinator as coordinator_module
 
 from .conftest import POLL_DATA
 
@@ -120,8 +121,6 @@ async def test_out_of_range_command_is_reported(
 ) -> None:
     """A charger that is not advertising gives the user a reason, not a traceback."""
     mock_charger.connected = False
-    import custom_components.easee_ble.coordinator as coordinator_module
-
     original = coordinator_module.bluetooth.async_ble_device_from_address
     coordinator_module.bluetooth.async_ble_device_from_address = (
         lambda *args, **kwargs: None
@@ -162,19 +161,114 @@ async def test_link_lost_ignores_a_charger_we_let_go_of(
     assert mock_charger.connect.await_count == 1
 
 
-async def test_stale_link_is_retired(
+async def test_a_working_link_is_never_given_up(
     hass: HomeAssistant, loaded: MockConfigEntry, mock_charger: MagicMock
 ) -> None:
-    """A link older than MAX_LINK_AGE is replaced by the poll, not by a command."""
+    """Age alone is no reason to drop a link: the charger has one slot to lose."""
     coordinator = loaded.runtime_data
-    coordinator._connected_at -= MAX_LINK_AGE + 1
 
-    # The command path takes the old link as it is, rather than waiting on a reconnect.
-    await coordinator._ready()
+    for _ in range(3):
+        await coordinator.async_refresh()
+
     assert mock_charger.connect.await_count == 1
+    mock_charger.disconnect.assert_not_awaited()
 
-    # The poll path retires it.
-    await coordinator._ready(retire_stale=True)
+
+async def test_reconnect_waits_for_the_teardown_to_settle(
+    hass: HomeAssistant,
+    loaded: MockConfigEntry,
+    mock_charger: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A reconnect does not race the teardown of the link it just dropped."""
+    coordinator = loaded.runtime_data
+    monkeypatch.setattr(coordinator_module, "RECONNECT_SETTLE", 0.2)
+
+    await coordinator._drop()
+    started = hass.loop.time()
+    await coordinator._ready()
+
+    assert hass.loop.time() - started >= 0.2
+    assert mock_charger.connect.await_count == 2
+
+
+async def test_a_link_lost_while_connecting_still_settles(
+    hass: HomeAssistant,
+    loaded: MockConfigEntry,
+    mock_charger: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The library tears that link down itself, so only the callback records it."""
+    coordinator = loaded.runtime_data
+    monkeypatch.setattr(coordinator_module, "RECONNECT_SETTLE", 0.2)
+
+    # As the library does: report the drop, then fail the connect it happened during.
+    coordinator._charger = None
+    coordinator._on_link_lost(mock_charger)
+    started = hass.loop.time()
+    await coordinator._ready()
+
+    assert hass.loop.time() - started >= 0.2
+
+
+async def test_the_settle_survives_a_reload(
+    hass: HomeAssistant,
+    loaded: MockConfigEntry,
+    mock_charger: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A failed setup is reloaded on the next advertisement, coordinator and all."""
+    monkeypatch.setattr(coordinator_module, "RECONNECT_SETTLE", 0.2)
+    await loaded.runtime_data._drop()
+
+    # As a reload does: a new coordinator, remembering nothing of its own.
+    reloaded = coordinator_module.EaseeBleCoordinator(hass, loaded)
+    started = hass.loop.time()
+    await reloaded._ready()
+
+    assert hass.loop.time() - started >= 0.2
+
+
+async def test_a_first_connect_does_not_settle(
+    hass: HomeAssistant,
+    mock_entry: MockConfigEntry,
+    mock_ble_device: MagicMock,
+    mock_charger: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nothing was torn down, so there is nothing to wait for."""
+    monkeypatch.setattr(coordinator_module, "RECONNECT_SETTLE", 5.0)
+    mock_entry.add_to_hass(hass)
+
+    started = hass.loop.time()
+    assert await hass.config_entries.async_setup(mock_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.loop.time() - started < 5.0
+
+
+async def test_a_wedged_poll_is_cut_short(
+    hass: HomeAssistant,
+    loaded: MockConfigEntry,
+    mock_charger: MagicMock,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A link that stops answering is rebuilt, not waited on for minutes."""
+    monkeypatch.setattr(coordinator_module, "POLL_TIMEOUT", 0.05)
+
+    async def _never_answers(*args: object, **kwargs: object) -> None:
+        await asyncio.sleep(60)
+
+    mock_charger.poll.side_effect = _never_answers
+    await loaded.runtime_data.async_refresh()
+
+    assert not loaded.runtime_data.last_update_success
+    assert "unanswered" in str(loaded.runtime_data.last_exception)
+    mock_charger.disconnect.assert_awaited()
+
+    mock_charger.poll.side_effect = None
+    await loaded.runtime_data.async_refresh()
+    assert loaded.runtime_data.last_update_success
     assert mock_charger.connect.await_count == 2
 
 

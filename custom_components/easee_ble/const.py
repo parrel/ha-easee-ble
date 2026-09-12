@@ -19,11 +19,14 @@ DEFAULT_SCAN_INTERVAL = timedelta(seconds=30)
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 3600
 
-# Recycle the held link at this age: a proxy can report a link it stopped answering.
-MAX_LINK_AGE = 3600.0
-
-# Backstop for one poll: the next is scheduled only after this one returns.
+# Backstop for a whole update, reconnect included; the poll has its own, below.
 UPDATE_TIMEOUT = 240.0
+
+# A poll on a live link takes about a second: well past that, the link is wedged.
+POLL_TIMEOUT = 30.0
+
+# Let a torn-down link settle: connecting into a teardown fails, slowly, with 133.
+RECONNECT_SETTLE = 2.0
 
 # Deadline for one user-initiated command; short because somebody is waiting.
 COMMAND_TIMEOUT = 45.0
