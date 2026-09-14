@@ -9,6 +9,23 @@ Control an Easee EV charger from Home Assistant over **Bluetooth**. All you need
 
 **Unofficial.** Reverse-engineered. Not affiliated with or endorsed by Easee. No warranty, changing charger settings is at your own risk.
 
+## Contents
+
+- [Supported devices](#supported-devices)
+- [Compared to the alternatives](#compared-to-the-alternatives)
+- [Before you start](#before-you-start)
+- [Installation](#installation)
+- [Setup](#setup)
+- [Entities](#entities)
+- [Actions](#actions)
+- [Options](#options)
+- [Examples](#examples)
+  - [evcc configuration](#evcc-configuration)
+- [Known limitations](#known-limitations)
+- [Troubleshooting](#troubleshooting)
+- [Contributing](#contributing)
+- [Licence](#licence)
+
 ## Supported devices
 
 Easee wall chargers: developed against an Easee Charge Max, others speak the same protocol and are expected to work.
@@ -95,7 +112,7 @@ done.
 | **Charger enabled** | Switch the charger on and off |
 | **Max charger current** | The charger's own current limit, in amps |
 | **Dynamic charger current** | A temporary limit on top of it - the one to automate |
-| **Phase mode** | 1-phase, automatic, or 3-phase |
+| **Phase mode** | 1-phase, automatic, or 3-phase - see below |
 | **Dynamic circuit current** | The same, one level up: the circuit shared by several chargers |
 | **Cable locked** | Lock the cable permanently into the socket |
 | **Idle current** | Keep a trickle flowing to a parked car |
@@ -103,6 +120,8 @@ done.
 | **LED** | The status LED strip, dimmable; 0% is off |
 | **Bluetooth mode** | Button press only, or always on |
 | **Reboot**, **Identify** | Restart the charger; play the LED animation to find it |
+
+A new **Phase mode** only takes effect once the charger has been turned off and on again, which can be accomplished with the **Charger enabled** switch or by limiting one of the limits below the minimum required limits (usually <6A). The charger does not do this by itself.
 
 ### Sensors
 
@@ -157,6 +176,12 @@ Turn **Require authorisation** on to make the charger actually ask for a key.
 sets the poll interval, 30 seconds by default. Home Assistant keeps the
 Bluetooth connection open, so a poll costs about 0.4 seconds - short intervals
 are cheap here.
+
+## Examples
+
+### evcc configuration
+
+An example of how this integration can be used with evcc can be found in [examples/evcc.md](examples/evcc.md).
 
 ## Known limitations
 
