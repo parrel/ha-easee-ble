@@ -5,6 +5,7 @@ Control an Easee EV charger from Home Assistant over **Bluetooth**. All you need
 [![HACS: custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
 [![Validate](https://github.com/parrel/ha-easee-ble/actions/workflows/validate.yml/badge.svg)](https://github.com/parrel/ha-easee-ble/actions/workflows/validate.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2.svg)](https://github.com/sponsors/parrel)
 
 **Unofficial.** Reverse-engineered. Not affiliated with or endorsed by Easee. No warranty, changing charger settings is at your own risk.
 
