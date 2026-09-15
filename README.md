@@ -39,12 +39,19 @@ Easee wall chargers: developed against an Easee Charge Max, others speak the sam
 | Update rate | >5s | Live push | >30 s |
 | RFID key enrollment | ✅ | ❌ | ❌ |
 | Charge schedules | ❌ | ✅ | ❌ |
+| Works alongside an external operator | ✅ | ✅ | ⚠️³ |
 
 ¹ Easee's native OCPP, firmware 344 and later. It is switched on through
 Easee's cloud API.
 
 ² The cloud updates lifetime energy at irregular times, not on the hour, so
 the Energy dashboard books part of it in the wrong hour.
+
+³ The charger accepts only one OCPP connection. Bluetooth and the cloud don't
+use it, so an external operator (a company-car or employer backend) can stay
+connected. Pointing OCPP at Home Assistant takes that single slot, so you'd
+need something like [evcc](https://evcc.io) in between to proxy the operator's
+connection.
 
 ## Before you start
 
